@@ -7,6 +7,7 @@ This is a web-based and very minimalistic screen share tool for the reMarkable d
 > * tested with reMarkable 2, Version 2.12.1.527
 > * no subscription nor account for Connect needed
 > * after installation the feature-rich screen share frontend is accessible in a web browser
+> * there is no interaction between the frontend and the reMarkable device
 
 ## Features
 
@@ -51,7 +52,7 @@ This is a web-based and very minimalistic screen share tool for the reMarkable d
 
 ## Usage
 
-Make sure your reMarkable is not sleeping. Open a web browser on your computer and request the service on `{IP address}:12345`. If your computer is in your local home network and your router hosts a DHCP server, you should be even able to access the service on `remarkable:12345`. If the service is up and running on your reMarkable is accessible from your computer, you will see a canvas in your browser which reflects the pen of your reMarkable.
+Make sure your reMarkable is not sleeping. Open a web browser on your computer and request the service on `{IP address}:12345`. If your computer is in your local home network and your router hosts a DHCP server, you should be even able to access the service on `remarkable:12345`. If the service on your reMarkable is up and running and accessible from your computer, you will see a canvas in your browser which reflects to some degree the pen of your reMarkable.
 
 ## References
 
