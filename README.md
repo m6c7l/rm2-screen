@@ -1,4 +1,4 @@
-# reMarkable Screen Share
+# reMarkable S3 (Screen Share Service)
 
 ![](canvas.png)
 
