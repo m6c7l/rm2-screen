@@ -1,0 +1,16 @@
+[Unit]
+Description=canvas
+After=network.target
+
+[Service]
+User=root
+Type=simple
+Restart=always
+RestartSec=15
+StartLimitInterval=0
+ExecStartPre=/bin/sleep 15
+WorkingDirectory=/home/root/canvas
+ExecStart=/bin/sh -c '/home/root/python3/bin/python ./canvas.py'
+
+[Install]
+WantedBy=multi-user.target

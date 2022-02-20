@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html>
+
+  <head>
+    <title>Remarkable Canvas</title>
+  </head>
+  
+  <style>
+    canvas {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+    }
+  </style>
+  
+  <body>
+
+    <canvas width="1404" height="1053" id="main"></canvas>
+
+    <script>
+
+      var csMain = document.getElementById("main");
+
+
+      var csDraw = document.createElement("canvas");
+      [csDraw.width, csDraw.height] = [csMain.width, csMain.height];
+      document.body.appendChild(csDraw);
+
+      var overlays = [];
+      var index = -1;
+      var page = -1;
+
+      var landscape = true;
+      var dark = false;
+      var active = false;
+
+      var color = null;
+
+      var COL_BG = ["rgb(235, 237, 239)", "rgb(35, 37, 39)"];
+      var COL_PEN = ["rgb(200, 210, 220)", "rgb(80, 90, 100)"];
+      var COL_DRAW = ["rgb(255, 255, 255)", "rgb(0, 0, 0)"];
+      var COL_STROKE = ["black", "white"];
+      var COL_BORDER = ["rgb(200, 210, 220)", "rgb(80, 90, 100)"];
+
+
+      function paint(pen) {
+
+        csOver = overlays[page].at(index);
+        cxOver = csOver.getContext("2d");
+
+        cxOver.lineWidth = Math.exp(pen.z) - 1;
+        cxOver.strokeStyle = color;
+
+        cxOver.lineTo(pen.x, pen.y);
+        cxOver.closePath();
+        cxOver.stroke();
+
+        cxOver.beginPath();
+        cxOver.moveTo(pen.x, pen.y);
+
+      }
+
+      function addOverlay() {
+
+        var i = overlays[page].length;
+        while (i--) {
+          if (overlays[page][i].hidden) { 
+            document.body.removeChild(overlays[page][i]);
+            overlays[page].splice(i, 1);
+          } 
+        }
+
+        var csOver = document.createElement("canvas");
+        [csOver.width, csOver.height] = [csDraw.width, csDraw.height];
+        [csOver.style.backgroundColor, csOver.style.opacity] = ["transparent", 1];
+        document.body.appendChild(csOver);
+
+        overlays[page].push(csOver);
+
+        index = -1;
+
+      }
+
+      function onPenMove(pen, hovering) {
+
+        cxDraw = csDraw.getContext("2d");
+
+        if (hovering) {
+          
+          active = false;
+          
+          cxDraw.closePath();
+          cxDraw.clearRect(0, 0, csDraw.width, csDraw.height);
+
+          csOver = overlays[page].at(index);
+          cxOver = csOver.getContext("2d");
+          cxOver.moveTo(pen.x, pen.y);
+
+        } else {
+
+          if (!active) {
+            
+            active = true;
+
+            addOverlay();
+
+            csOver = overlays[page].at(index);
+            cxOver = csOver.getContext("2d");
+            cxOver.moveTo(pen.x, pen.y);
+
+          }
+
+        }
+
+        cxDraw.fillStyle = COL_PEN[Number(dark)];
+        cxDraw.beginPath();
+        cxDraw.arc(pen.x, pen.y, 6, 0, 2*Math.PI);
+        cxDraw.fill();
+
+      }
+
+      function addPage() {
+
+        overlays.push([]);
+        page = overlays.length - 1;
+
+        addOverlay();
+
+      }
+
+      function resetPage() {
+
+        for (let i = 0; i < overlays[page].length; i++) { 
+          document.body.removeChild(overlays[page][i]);
+        }
+        overlays[page].length = 0;
+
+        addOverlay();
+
+      }
+
+      function applyTheme() {
+
+        document.body.style.backgroundColor = COL_BG[Number(dark)];
+
+        cxDraw = csDraw.getContext("2d");
+        csDraw.style.border = COL_BORDER[Number(dark)];
+        csDraw.style.backgroundColor = COL_DRAW[Number(dark)];
+
+        if (COL_STROKE.includes(color) || color == null) {
+          color = COL_STROKE[Number(dark)];
+        }
+
+      }
+
+      function toggleView() {
+
+        landscape = !landscape;
+
+        [csDraw.width, csDraw.height] = [csMain.height, csMain.width];
+        [csMain.width, csMain.height] = [csDraw.width, csDraw.height];
+
+        resetPage();
+
+      }
+
+      function setOverlay(visible) {
+
+        csOver = overlays[page].at(index);
+        csOver.hidden = !visible;
+
+      }
+
+      function setPage(visible) {
+
+        for (let i = 0; i < overlays[page].length; i++) {
+          csOver = overlays[page].at(i);
+          csOver.hidden = !visible;
+        }
+
+      }
+
+      function keyDown(e) {
+
+        if (e.keyCode == 13) { // enter: toggle landscape/portrait
+          toggleView();
+
+        } else if (e.keyCode ==  9) { // tab: toggle dark/bright
+          dark = !dark;
+          applyTheme();
+
+        } else if (e.keyCode == 32) { // space: clear canvas
+          resetPage();
+
+        } else if (e.keyCode == 75) { // blac*k*
+          color = "black";
+
+        } else if (e.keyCode == 87) { // *w*hite
+          color = "white";
+
+        } else if (e.keyCode == 82) { // *r*ed
+          color = "red";
+
+        } else if (e.keyCode == 71) { // *g*reen
+          color = "green";
+
+        } else if (e.keyCode == 66) { // *b*lue
+          color = "blue";
+
+        } else if (e.keyCode == 89) { // *y*ellow
+          color = "yellow";
+
+        } else if (e.keyCode == 67) { // *c*yan
+          color = "cyan";
+
+        } else if (e.keyCode == 77) { // *m*agenta
+          color = "magenta";
+          
+        } else if (e.keyCode == 37) { // left
+          setOverlay(false);
+          index = index - 1;
+          
+        } else if (e.keyCode == 39) { // right
+          index = Math.min(index + 1, -1);
+          setOverlay(true);
+          
+        } else if (e.keyCode == 33) { // page-up
+          setPage(false);
+          page = Math.max(page - 1, 0);
+          setPage(true);
+
+        } else if (e.keyCode == 34) { // page-down
+          setPage(false);
+          if (page + 1 == overlays.length) {
+            addPage();
+          } else {
+            page = page + 1;
+            setPage(true);
+          }
+
+        }
+
+        e.preventDefault();
+
+      }
+
+      function setup() {
+        
+        var SCREEN = Object.freeze({width: 1872*11.2, height: 1404*11.2, pressure: 4095});
+
+        let scaleX = csDraw.width / SCREEN.width;
+        let scaleY = csDraw.height / SCREEN.height;
+        let scaleZ = 1 / SCREEN.pressure;
+
+        let websocket = new WebSocket("ws://" + location.host + "/pen");
+
+        websocket.onmessage = function(event) {
+
+          let data = JSON.parse(event.data); // [x, y, pressure]
+
+          if (landscape) {
+            pen = Object.freeze({x: data[0]*scaleX, y: data[1]*scaleY, z: data[2]*scaleZ});
+          } else {
+            pen = Object.freeze({x: (data[1])*scaleY, y: (SCREEN.width-data[0])*scaleX, z: data[2]*scaleZ});
+          }
+
+          drawing = pen.z > 0.01;
+
+          console.log(data[0], data[1], data[2]);
+
+          onPenMove(pen, !drawing);
+          
+          if (drawing) {
+            paint(pen);
+          }
+
+        }
+        
+        addPage();
+        applyTheme();
+
+        document.addEventListener('keydown', keyDown);
+
+      }
+
+      setup();
+
+      function download() {
+        //alert("not implemented");
+      }
+
+      function onclick(e) {
+        download();
+      }
+
+      window.addEventListener('click', onclick);
+      
+    </script>
+
+  </body>
+
+</html>
