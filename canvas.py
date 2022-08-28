@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+
 import collections
 
 import asyncio
@@ -42,15 +43,17 @@ async def pipe_to_websocket(websocket, pipe):
 
     print(f'[info] forwarding {pipe} to {websocket.remote_address}')
 
-    size = 5
+    size = 8
 
-    pen = {
-         0: collections.deque([float('nan')], maxlen=size),  # x
-         1: collections.deque([float('nan')], maxlen=size),  # y
-        24: collections.deque([float('nan')], maxlen=1)      # pressure
+    pen = {0: 'x', 1: 'y', 24: 'z'}
+
+    val = {
+       pen[0]:  collections.deque([float('nan')]*size, maxlen=size),
+       pen[1]:  collections.deque([float('nan')]*size, maxlen=size),
+       pen[24]: collections.deque([float('nan')]*size, maxlen=size)
     }
 
-    last = [float('nan'), float('nan'), 0]
+    msg, nav = {}, {}
 
     try:
 
@@ -58,32 +61,72 @@ async def pipe_to_websocket(websocket, pipe):
 
             buf = await proc.stdout.read(16)
 
-            a = buf[4:8]
-            b = buf[8:12]
-            c = buf[12:16]
+            a, b, c = buf[4:8], buf[8:12], buf[12:16]
 
-            typ = b[0]
-            code = b[2] + b[3] * 0x100
+            typ, code = b[0], b[2] + b[3] * 0x100
 
             if typ == 3 and code in pen:  # absolute pen position
 
-                val = c[0] + c[1] * 0x100 + c[2] * 0x10000 + c[3] * 0x1000000                    
-                
-                pen[code].append(val)
-        
-                loc = [sum(v) / len(v) for _, v in pen.items()]
+                for _, k in pen.items():
+                    val[k].append(val[k][-1])
+              
+                val[pen[code]][-1] = c[0] + c[1] * 0x100 + c[2] * 0x10000 + c[3] * 0x1000000
 
-                if last != loc:
+                x, y, z = [val[k][-1] for _, k in pen.items()]
 
-                    if sum([(a-b)**2 for a, b in zip(last, loc)])**0.5 < 50:
+                if   (z > 0) and \
+                     (((   50 < x <  1150) and (6700 < y < 7800)) or \
+                      ((12950 < x < 14150) and (  50 < y < 1200))):
+
+                    if 'act' in msg and 'undo' in msg['act']:
                         continue
 
-                    last = loc
+                    msg = {'act': 'undo'}
 
-                    try:
-                        await websocket.send(json.dumps(loc))
-                    except Exception as e:
-                        pass
+                elif (z > 0) and \
+                     (((   50 < x <  1150) and (7900 < y < 9000)) or \
+                      ((11550 < x < 12750) and (  50 < y < 1200))):
+
+                    if 'act' in msg and 'redo' in msg['act']:
+                        continue
+
+                    msg = {'act': 'redo'}
+
+                elif (z > 0) and \
+                     (((50 < x < 1150) and (14450 < y < 15550)) or \
+                      ((50 < x < 1250) and (   50 < y <  1350))):
+
+                    if 'nav' in msg and 'book' in msg['nav']:
+                        continue
+
+                    nav = {'book': None}
+
+                elif (z > 0) and ('book' in nav) and \
+                     (((1200 < x < 6800) and (14450 < y < 15550)) or \
+                      ((  50 < x < 1250) and ( 1350 < y <  6800))):
+
+                    msg = {'act': 'new'}
+
+                else:
+
+                    msg = {}
+
+                    if (z > 0):
+
+                        x, y = sum(val['x']) / size, sum(val['y']) / size
+                        msg = {'pen': (x, y, z)}
+
+                    else:
+
+                        msg = {'cur': (x, y)}
+
+                try:
+                    await websocket.send(json.dumps(msg))
+                except:
+                    pass
+
+                if 'act' in msg or 'pen' in msg:
+                    nav = {}
 
     finally:
         proc.kill()

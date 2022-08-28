@@ -22,7 +22,6 @@
 
       var csMain = document.getElementById("main");
 
-
       var csDraw = document.createElement("canvas");
       [csDraw.width, csDraw.height] = [csMain.width, csMain.height];
       document.body.appendChild(csDraw);
@@ -257,24 +256,63 @@
 
         websocket.onmessage = function(event) {
 
-          let data = JSON.parse(event.data); // [x, y, pressure]
+          let data = JSON.parse(event.data);
 
-          if (landscape) {
-            pen = Object.freeze({x: data[0]*scaleX, y: data[1]*scaleY, z: data[2]*scaleZ});
-          } else {
-            pen = Object.freeze({x: (data[1])*scaleY, y: (SCREEN.width-data[0])*scaleX, z: data[2]*scaleZ});
-          }
+          if ("pen" in data) {         
 
-          drawing = pen.z > 0.01;
+             data = data["pen"]; // x, y, pressure
 
-          console.log(data[0], data[1], data[2]);
+             if (landscape) {
+                pen = Object.freeze({x: data[0]*scaleX, y: data[1]*scaleY, z: data[2]*scaleZ});
+             } else {
+                pen = Object.freeze({x: (data[1])*scaleY, y: (SCREEN.width-data[0])*scaleX, z: data[2]*scaleZ});
+             }
 
-          onPenMove(pen, !drawing);
+             onPenMove(pen, false);
+             paint(pen);
+             console.log(data[0], data[1], data[2]);
+
+          } else
+
+          if ("cur" in data) {
+
+             data = data["cur"]; // x, y
+
+             if (landscape) {
+                pen = Object.freeze({x: data[0]*scaleX, y: data[1]*scaleY, z: 0});
+             } else {
+                pen = Object.freeze({x: (data[1])*scaleY, y: (SCREEN.width-data[0])*scaleX, z: 0});
+             }
+
+             onPenMove(pen, true);
+             console.log(data[0], data[1]);
           
-          if (drawing) {
-            paint(pen);
-          }
+          } else
 
+          if ("act" in data) {
+            
+             data = data['act'];
+
+             if (data == "undo") {
+                setOverlay(false);
+                index = index - 1;
+
+             } else
+
+             if (data == "redo") {
+                index = Math.min(index + 1, -1);
+                setOverlay(true);
+
+             } else
+
+             if (data == "new") {
+                setPage(false);
+                addPage();
+
+             }
+
+          }
+         
         }
         
         addPage();
@@ -294,7 +332,7 @@
         download();
       }
 
-      window.addEventListener('click', onclick);
+      //window.addEventListener('click', onclick);
       
     </script>
 

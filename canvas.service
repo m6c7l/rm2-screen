@@ -6,9 +6,9 @@ After=network.target
 User=root
 Type=simple
 Restart=always
-RestartSec=15
+RestartSec=2
 StartLimitInterval=0
-ExecStartPre=/bin/sleep 15
+ExecStartPre=/bin/sleep 2
 WorkingDirectory=/home/root/canvas
 ExecStart=/bin/sh -c '/home/root/python3/bin/python ./canvas.py'
 

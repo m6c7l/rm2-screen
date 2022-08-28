@@ -1,13 +1,11 @@
 # reMarkable S3 (Screen Share Service)
 
-![](canvas.png)
-
 This is a web-based and very minimalistic screen share tool for the reMarkable device for creating interactive presentations, slides, simple sketches, flip books, and whatever else comes to your mind. This tool provides at least some of the functionality as introduced with the native *Screen Share* [1] from reMarkable, but does not need a subscription nor an online account to work. The repository *Awesome reMarkable* [2] lists many options and approaches to avoid the need for a paid subscription when it comes to screen share, e.g. *reStream* [3]. However, *Pipes and Papers* [4] seemed to be the most promising one, thus this work is heavily inspired by that one.
 
-> * tested with reMarkable 2, Version 2.12.1.527
+> * tested with reMarkable 2, Version 2.14.3.977
 > * no subscription nor account for Connect needed
 > * after installation the feature-rich screen share frontend is accessible in a web browser
-> * there is no interaction between the frontend and the reMarkable device
+> * there is only undirectional interaction between the frontend and the reMarkable device
 
 ## Features
 
@@ -17,6 +15,8 @@ This is a web-based and very minimalistic screen share tool for the reMarkable d
 * clear current page (with **SPACE**)
 * navigate between pages (**PAGE_UP** goes back to previous page, and **PAGE_DOWN** jumps to next page or creates a new one)
 * undo and redo on current page (press **LEFT_ARROW** to undo, and **RIGHT_ARROW** to redo)
+
+> The functions **undo**, **redo**, and **new page** can be triggered with the menu buttons on the device as well.
 
 ## Installation
 
