@@ -42,7 +42,6 @@
       var COL_STROKE = ["black", "white"];
       var COL_BORDER = ["rgb(200, 210, 220)", "rgb(80, 90, 100)"];
 
-
       function paint(pen) {
 
         csOver = overlays[page].at(index);
@@ -325,14 +324,31 @@
       setup();
 
       function download() {
-        //alert("not implemented");
+
+        var disp = document.createElement('canvas');
+        [disp.width, disp.height] = [csDraw.width, csDraw.height];
+        
+        var ctx = disp.getContext('2d');
+        var i = overlays[page].length;
+        while (i--) {
+          if (!overlays[page][i].hidden) { 
+            ctx.drawImage(overlays[page][i], 0, 0);
+          }
+        }
+
+        var img = disp.toDataURL();
+        var link = document.createElement('a');
+        link.download = 'remarkable.png';
+        link.href = img;
+        link.click();
+
       }
 
       function onclick(e) {
         download();
       }
 
-      //window.addEventListener('click', onclick);
+      window.addEventListener('click', onclick);
       
     </script>
 
