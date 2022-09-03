@@ -1,6 +1,8 @@
 import os
 import sys
+
 import json
+import time
 
 import collections
 
@@ -33,7 +35,7 @@ def device_model_input():
         os._exit(1)
 
 
-async def pipe_to_websocket(websocket, pipe):
+async def pipe_to_websocket(websocket, pipe, fps=1000):
 
     proc = await asyncio.create_subprocess_shell(
         f'cat {pipe}',
@@ -42,6 +44,8 @@ async def pipe_to_websocket(websocket, pipe):
     )
 
     print(f'[info] forwarding {pipe} to {websocket.remote_address}')
+
+    dt = 1 / fps
 
     size = 8
 
@@ -53,9 +57,9 @@ async def pipe_to_websocket(websocket, pipe):
        pen[24]: collections.deque([float('nan')]*size, maxlen=size)
     }
 
-    msg, nav = {}, {}
-
     try:
+
+        msg, nav, t = {}, {'book': 0}, 0
 
         while proc.returncode == None:
 
@@ -78,55 +82,68 @@ async def pipe_to_websocket(websocket, pipe):
                      (((   50 < x <  1150) and (6700 < y < 7800)) or \
                       ((12950 < x < 14150) and (  50 < y < 1200))):
 
-                    if 'act' in msg and 'undo' in msg['act']:
+                    if msg.get('act', None) == 'undo':
                         continue
 
-                    msg = {'act': 'undo'}
+                    msg['act'] = 'undo'
 
                 elif (z > 0) and \
                      (((   50 < x <  1150) and (7900 < y < 9000)) or \
                       ((11550 < x < 12750) and (  50 < y < 1200))):
 
-                    if 'act' in msg and 'redo' in msg['act']:
+                    if msg.get('act', None) == 'redo':
                         continue
 
-                    msg = {'act': 'redo'}
+                    msg['act'] = 'redo'
 
                 elif (z > 0) and \
                      (((50 < x < 1150) and (14450 < y < 15550)) or \
                       ((50 < x < 1250) and (   50 < y <  1350))):
 
-                    if 'nav' in msg and 'book' in msg['nav']:
-                        continue
+                    nav['book'] += int(not nav['book'])
 
-                    nav = {'book': None}
+                    if nav['book'] > 1:
+                       nav['book'] = -1
 
-                elif (z > 0) and ('book' in nav) and \
+                elif (z > 0) and (nav['book']) and \
                      (((1200 < x < 6800) and (14450 < y < 15550)) or \
                       ((  50 < x < 1250) and ( 1350 < y <  6800))):
 
-                    msg = {'act': 'new'}
+                    if msg.get('act', None) == 'new':
+                        continue
+
+                    msg['act'] = 'new'
+
+                    nav['book'] = -1
 
                 else:
 
-                    msg = {}
+                    if time.time() - t < dt:
+                        continue
+
+                    t = time.time()
 
                     if (z > 0):
-
                         x, y = sum(val['x']) / size, sum(val['y']) / size
-                        msg = {'pen': (x, y, z)}
+                        msg['pen'] = (x, y, z)
 
                     else:
+                        msg['cur'] = (x, y)
 
-                        msg = {'cur': (x, y)}
+                    for k in ('act',):
+                        msg.pop(k, None)
+
+                    for k in nav:
+                        if nav[k]:
+                            nav[k] += nav[k] % 2
 
                 try:
                     await websocket.send(json.dumps(msg))
                 except:
                     pass
 
-                if 'act' in msg or 'pen' in msg:
-                    nav = {}
+                for k in ('pen', 'cur',):
+                    msg.pop(k, None)
 
     finally:
         proc.kill()
