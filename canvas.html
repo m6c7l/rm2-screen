@@ -30,7 +30,7 @@
       var index = -1;
       var page = -1;
 
-      var landscape = true;
+      var landscape = {landscape};
       var dark = false;
       var active = false;
 
@@ -182,7 +182,7 @@
       function keyDown(e) {
 
         if (e.keyCode == 13) { // enter: toggle landscape/portrait
-          toggleView();
+          // toggleView();
 
         } else if (e.keyCode ==  9) { // tab: toggle dark/bright
           dark = !dark;
@@ -255,11 +255,14 @@
 
         websocket.onmessage = function(event) {
 
-          let data = JSON.parse(event.data);
+          // let data = JSON.parse(event.data);
+          let data = event.data.split(" ");
+          
+          // if ("pen" in data) {
+          if (data[0] == "pen") {
 
-          if ("pen" in data) {         
-
-             data = data["pen"]; // x, y, pressure
+             // data = data["pen"]; // x, y, pressure
+             data = [parseInt(data[1]), parseInt(data[2]), parseInt(data[3])];
 
              if (landscape) {
                 pen = Object.freeze({x: data[0]*scaleX, y: data[1]*scaleY, z: data[2]*scaleZ});
@@ -273,9 +276,11 @@
 
           } else
 
-          if ("cur" in data) {
-
-             data = data["cur"]; // x, y
+          // if ("cur" in data) {
+          if (data[0] == "cur") {
+ 
+             // data = data["cur"]; // x, y
+             data = [parseInt(data[1]), parseInt(data[2])];
 
              if (landscape) {
                 pen = Object.freeze({x: data[0]*scaleX, y: data[1]*scaleY, z: 0});
@@ -288,9 +293,11 @@
           
           } else
 
-          if ("act" in data) {
-            
-             data = data['act'];
+          // if ("act" in data) {
+          if (data[0] == "act") {
+
+             // data = data['act'];
+             data = data[1];
 
              if (data == "undo") {
                 setOverlay(false);
@@ -316,6 +323,11 @@
         
         addPage();
         applyTheme();
+
+        if (!landscape) {
+          [csDraw.width, csDraw.height] = [csMain.height, csMain.width];
+          [csMain.width, csMain.height] = [csDraw.width, csDraw.height];
+        }
 
         document.addEventListener('keydown', keyDown);
 

@@ -11,7 +11,6 @@ This is a web-based and very minimalistic screen share tool for the reMarkable d
 
 ## Features
 
-* landscape and portrait view (toggle with **ENTER**)
 * dark and bright page theme (toggle with **TAB**)
 * different pen colors (set with letter keys: **W**hite, **R**ed, **G**reen, blac**K**, **Y**ellow, **C**yan, **B**lue, **M**agenta)
 * clear current page (with **SPACE**)
@@ -56,6 +55,8 @@ This is a web-based and very minimalistic screen share tool for the reMarkable d
 ## Usage
 
 Make sure your reMarkable is not sleeping. Open a web browser on your computer and request the service on `{IP address}:12345`. If your computer is in your local home network and your router hosts a DHCP server, you should be even able to access the service on `remarkable:12345`. If the service on your reMarkable is up and running and accessible from your computer, you will see a canvas in your browser which reflects to some degree the pen of your reMarkable.
+
+> In the service file the call `python ./canvas.py landscape 12345` is preset (first arguement is either **landscape** or **portrait**, the second is the HTTP port to be used). Feel free to spawn multiple services on different ports, e.g. one running a landscape view and another running a portrait view.
 
 ## References
 

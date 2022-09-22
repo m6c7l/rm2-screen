@@ -1,7 +1,6 @@
 import os
 import sys
 
-import json
 import time
 
 import collections
@@ -35,7 +34,7 @@ def device_model_input():
         os._exit(1)
 
 
-async def pipe_to_websocket(websocket, pipe, fps=1000):
+async def pipe_to_websocket(websocket, pipe, orientation):
 
     proc = await asyncio.create_subprocess_shell(
         f'cat {pipe}',
@@ -43,9 +42,10 @@ async def pipe_to_websocket(websocket, pipe, fps=1000):
         stderr=asyncio.subprocess.PIPE
     )
 
-    print(f'[info] forwarding {pipe} to {websocket.remote_address}')
+    print(f'[info] forwarding {pipe} to {websocket.remote_address} as {orientation}')
 
-    dt = 1 / fps
+    portrait = orientation == 'portrait'
+    landscape = orientation == 'landscape'
 
     size = 8
 
@@ -59,7 +59,7 @@ async def pipe_to_websocket(websocket, pipe, fps=1000):
 
     try:
 
-        msg, nav, t = {}, {'book': 0}, 0
+        msg, nav = {}, {'book': 0, 'hover': True}
 
         while proc.returncode == None:
 
@@ -67,7 +67,7 @@ async def pipe_to_websocket(websocket, pipe, fps=1000):
 
             a, b, c = buf[4:8], buf[8:12], buf[12:16]
 
-            typ, code = b[0], b[2] + b[3] * 0x100
+            typ, code = b[0], b[2] + b[3] * 0x100  # typ 1 = close 
 
             if typ == 3 and code in pen:  # absolute pen position
 
@@ -79,26 +79,26 @@ async def pipe_to_websocket(websocket, pipe, fps=1000):
                 x, y, z = [val[k][-1] for _, k in pen.items()]
 
                 if   (z > 0) and \
-                     (((   50 < x <  1150) and (6700 < y < 7800)) or \
-                      ((12950 < x < 14150) and (  50 < y < 1200))):
+                     ((landscape and (   50 < x <  1150) and ( 6700 < y <  7800)) or \
+                      (portrait  and (12950 < x < 14150) and (   50 < y <  1200))):
 
-                    if msg.get('act', None) == 'undo':
+                    if 'undo' in msg.get('act', ()):
                         continue
 
-                    msg['act'] = 'undo'
+                    msg['act'] = ('undo',)
 
                 elif (z > 0) and \
-                     (((   50 < x <  1150) and (7900 < y < 9000)) or \
-                      ((11550 < x < 12750) and (  50 < y < 1200))):
+                     ((landscape and (   50 < x <  1150) and ( 7900 < y <  9000)) or \
+                      (portrait  and (11550 < x < 12750) and (   50 < y <  1200))):
 
-                    if msg.get('act', None) == 'redo':
+                    if 'redo' in msg.get('act', ()):
                         continue
 
-                    msg['act'] = 'redo'
+                    msg['act'] = ('redo',)
 
                 elif (z > 0) and \
-                     (((50 < x < 1150) and (14450 < y < 15550)) or \
-                      ((50 < x < 1250) and (   50 < y <  1350))):
+                     ((landscape and (   50 < x <  1150) and (14450 < y < 15550)) or \
+                      (portrait  and (   50 < x <  1250) and (   50 < y <  1350))):
 
                     nav['book'] += int(not nav['book'])
 
@@ -106,29 +106,40 @@ async def pipe_to_websocket(websocket, pipe, fps=1000):
                        nav['book'] = -1
 
                 elif (z > 0) and (nav['book']) and \
-                     (((1200 < x < 6800) and (14450 < y < 15550)) or \
-                      ((  50 < x < 1250) and ( 1350 < y <  6800))):
+                     ((landscape and ( 1200 < x <  6800) and (14450 < y < 15550)) or \
+                      (portrait  and (   50 < x <  1250) and ( 1350 < y <  6800))):
 
-                    if msg.get('act', None) == 'new':
+                    if 'new' in msg.get('act', ()):
                         continue
 
-                    msg['act'] = 'new'
+                    msg['act'] = ('new',)
 
                     nav['book'] = -1
 
                 else:
 
-                    if time.time() - t < dt:
-                        continue
-
-                    t = time.time()
-
                     if (z > 0):
+
+                        if not nav['hover'] and int(time.time()*1000) % 2 == 0:
+                            continue
+
                         x, y = sum(val['x']) / size, sum(val['y']) / size
+                        try: x = int(x)
+                        except: pass
+                        try: y = int(y)
+                        except: pass
                         msg['pen'] = (x, y, z)
 
+                        nav['hover'] = False
+
                     else:
+
+                        if nav['hover'] and int(time.time()*1000) % 2 == 0:
+                            continue
+
                         msg['cur'] = (x, y)
+
+                        nav['hover'] = True
 
                     for k in ('act',):
                         msg.pop(k, None)
@@ -138,7 +149,8 @@ async def pipe_to_websocket(websocket, pipe, fps=1000):
                             nav[k] += nav[k] % 2
 
                 try:
-                    await websocket.send(json.dumps(msg))
+                    for k in msg:
+                        await websocket.send('{} {}'.format(k, ' '.join((str(item) for item in msg[k]))))
                 except:
                     pass
 
@@ -149,7 +161,7 @@ async def pipe_to_websocket(websocket, pipe, fps=1000):
         proc.kill()
 
 
-async def http_handler(path, request):
+async def http_handler(path, request, orientation):
     
     if path == '/pen':
         return None
@@ -158,6 +170,13 @@ async def http_handler(path, request):
         return (http.HTTPStatus.NOT_FOUND, [], "")
 
     body = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'canvas.html'), 'rb').read()
+
+    landscape = str(orientation == 'landscape').lower()
+    portrait = str(orientation == 'portrait').lower()
+ 
+    body = body.replace(b'{landscape}', bytes(landscape, 'latin-1'))
+    body = body.replace(b'{portrait}', bytes(portrait, 'latin-1'))
+
     headers = [
         ('Content-Type', 'text/html'),
         ('Content-Length', str(len(body))),
@@ -167,17 +186,18 @@ async def http_handler(path, request):
     return (http.HTTPStatus.OK, headers, body)
 
 
-def run(host="0.0.0.0", port=12345):
+def run(host, orientation, port):
 
     pipe = device_model_input()
 
-    forward = lambda ws: pipe_to_websocket(ws, pipe)
+    forward = lambda ws: pipe_to_websocket(ws, pipe, orientation)
 
     start_server = websockets.serve(
         forward,
-        host, port,
+        host,
+        port,
         ping_interval=1000,
-        process_request=http_handler
+        process_request=lambda p, r : http_handler(p, r, orientation)
     )
 
     print(f'[info] serving on {host}:{port}')
@@ -186,5 +206,19 @@ def run(host="0.0.0.0", port=12345):
     asyncio.get_event_loop().run_forever()
 
 
+def usage():
+    print('usage: {} <landscape|portrait> <port>'.format(os.path.basename(sys.argv[0])))
+    os._exit(1)
+
+
 if __name__ == "__main__":
-    run()
+
+    print('!!!!!!', sys.argv)
+    args = sys.argv[1:]
+    try:
+       if args[0] not in ('landscape', 'portrait'):
+           raise Exception()
+       run('0.0.0.0', args[0], int(args[1]))
+    except:
+       usage()
+

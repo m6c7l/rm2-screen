@@ -10,7 +10,7 @@ RestartSec=2
 StartLimitInterval=0
 ExecStartPre=/bin/sleep 2
 WorkingDirectory=/home/root/canvas
-ExecStart=/bin/sh -c '/home/root/python3/bin/python ./canvas.py'
+ExecStart=/bin/sh -c '/home/root/python3/bin/python ./canvas.py landscape 12345'
 
 [Install]
 WantedBy=multi-user.target
